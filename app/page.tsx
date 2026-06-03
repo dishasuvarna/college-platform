@@ -1,14 +1,14 @@
-// app/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 interface College {
   id: number;
   name: string;
   location: string;
   fees: number;
-  rating: number;
+  rating: any;
   overview: string;
   courses: string[];
   placements: {
@@ -21,40 +21,62 @@ interface College {
 export default function CollegeDiscoveryPlatform() {
   const [colleges, setColleges] = useState<College[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [maxFees, setMaxFees] = useState<string>('');
-  const [minRating, setMinRating] = useState<string>('');
-
-  const fetchColleges = async () => {
-    setLoading(true);
-    try {
-      const queryParams = new URLSearchParams();
-      if (searchTerm) queryParams.append('search', searchTerm);
-      if (maxFees) queryParams.append('maxFees', maxFees);
-      if (minRating) queryParams.append('minRating', minRating);
-
-      const response = await fetch(`/api/colleges?${queryParams.toString()}`);
-      if (!response.ok) throw new Error('Failed to synchronize with backend records.');
-      
-      const data = await response.json();
-      setColleges(data);
-      setError(null);
-    } catch (err: any) {
-      setError(err.message || 'An error occurred while loading listings.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [search, setSearch] = useState<string>('');
+  const [maxFees, setMaxFees] = useState<number>(600000);
+  
+  // Feature 3: Selected comparison tracking state
+  const [selectedForCompare, setSelectedForCompare] = useState<number[]>([]);
+  const [compareData, setCompareData] = useState<College[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [compareLoading, setCompareLoading] = useState<boolean>(false);
 
   useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      fetchColleges();
-    }, 300);
+    const fetchColleges = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/colleges?search=${encodeURIComponent(search)}&maxFees=${maxFees}`);
+        if (res.ok) {
+          const data = await res.ok ? await res.json() : [];
+          setColleges(data);
+        }
+      } catch (err) {
+        console.error("Failed syncing asset array:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchColleges();
+  }, [search, maxFees]);
 
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm, maxFees, minRating]);
+  const handleSelectCompare = (id: number) => {
+    setSelectedForCompare(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(item => item !== id);
+      }
+      if (prev.length >= 3) {
+        alert("You can compare a maximum of 3 institutions simultaneously.");
+        return prev;
+      }
+      return [...prev, id];
+    });
+  };
+
+  const fetchComparisonMatrix = async () => {
+    if (selectedForCompare.length < 2) return;
+    setCompareLoading(true);
+    setIsModalOpen(true);
+    try {
+      const res = await fetch(`/api/colleges/compare?ids=${selectedForCompare.join(',')}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCompareData(data);
+      }
+    } catch (err) {
+      console.error("Error executing comparative matrix compile:", err);
+    } finally {
+      setCompareLoading(false);
+    }
+  };
 
   const formatINR = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -65,156 +87,205 @@ export default function CollegeDiscoveryPlatform() {
   };
 
   return (
-    <main className="min-h-screen bg-gray-50 text-gray-900">
-      <header className="bg-gradient-to-r border-b from-blue-700 to-indigo-800 text-white py-6 px-8 shadow-sm">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">EduSelect</h1>
-            <p className="text-blue-100 text-sm">Production-Grade College Discovery & Comparison Portal</p>
-          </div>
-          <div className="bg-blue-600/40 text-xs px-3 py-1.5 rounded-md border border-blue-400/30 font-mono">
-            ⚡ Neon Live Connection Enabled
-          </div>
+    <main className="min-h-screen bg-gray-50 text-gray-900 pb-24">
+      {/* Search Header Banner */}
+      <header className="bg-gradient-to-r from-slate-900 to-indigo-950 text-white py-12 px-6 shadow-sm">
+        <div className="max-w-6xl mx-auto space-y-4">
+          <h1 className="text-3xl font-extrabold tracking-tight">National Institute Analytics Hub</h1>
+          <p className="text-sm text-slate-300 max-w-xl">Filter metrics, evaluate dynamic career placement parameters, and benchmark institutions side-by-side.</p>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-4 gap-8">
-        {/* Filters Panel */}
-        <section className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm h-fit space-y-6">
-          <div>
-            <h2 className="font-semibold text-lg text-gray-800 mb-1">Search Filters</h2>
-            <p className="text-xs text-gray-500">Narrow your academic choices instantly</p>
+      {/* Control Panel Grid */}
+      <section className="max-w-6xl mx-auto px-4 mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-2">
+          <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Institutional Search</label>
+          <input 
+            type="text" 
+            placeholder="Search by name or technical major..." 
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full text-sm bg-gray-50 border border-gray-200 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-gray-800 font-medium"
+          />
+        </div>
+
+        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-2 md:col-span-2">
+          <div className="flex justify-between items-center">
+            <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Annual Tuition Threshhold</label>
+            <span className="text-xs font-bold font-mono bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100">{formatINR(maxFees)} max</span>
           </div>
-          <hr className="border-gray-100" />
+          <input 
+            type="range" 
+            min="100000" 
+            max="600000" 
+            step="25000"
+            value={maxFees}
+            onChange={(e) => setMaxFees(Number(e.target.value))}
+            className="w-full h-1.5 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-blue-600"
+          />
+        </div>
+      </section>
 
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-gray-600">Keyword Search</label>
-            <input
-              type="text"
-              placeholder="e.g., IIT, Mumbai, NIT..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-            />
-          </div>
+      {/* Grid Display Area */}
+      <section className="max-w-6xl mx-auto px-4 mt-8">
+        {loading ? (
+          <div className="text-center py-12 text-sm text-gray-400 font-medium animate-pulse">Syncing matching infrastructure profiles...</div>
+        ) : colleges.length === 0 ? (
+          <div className="text-center py-12 text-sm text-gray-400 font-medium border border-dashed border-gray-200 rounded-xl bg-white">No active institutional records match your parameters.</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {colleges.map((college) => {
+              const isSelected = selectedForCompare.includes(college.id);
+              return (
+                <div key={college.id} className={`bg-white rounded-xl border transition-all duration-200 shadow-sm flex flex-col justify-between relative overflow-hidden ${isSelected ? 'border-blue-500 ring-2 ring-blue-500/10' : 'border-gray-200 hover:border-gray-300'}`}>
+                  
+                  {/* Top Checkbox Overlay */}
+                  <div className="absolute top-3 right-3 z-10">
+                    <button 
+                      onClick={() => handleSelectCompare(college.id)}
+                      className={`text-[10px] font-bold px-2 py-1 rounded shadow-sm border transition-all ${isSelected ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                    >
+                      {isSelected ? '✓ Selected' : '+ Compare'}
+                    </button>
+                  </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-gray-600">Max Annual Fees</label>
-            <select
-              value={maxFees}
-              onChange={(e) => setMaxFees(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-            >
-              <option value="">Any Budget Limit</option>
-              <option value="160000">Up to ₹1,60,000</option>
-              <option value="220000">Up to ₹2,20,000</option>
-              <option value="300000">Up to ₹3,00,000</option>
-            </select>
-          </div>
+                  <div className="p-5 space-y-4">
+                    <div>
+                      <div className="text-[10px] text-gray-400 font-mono tracking-wider uppercase mb-1">📍 {college.location}</div>
+                      <h2 className="text-base font-bold text-gray-900 tracking-tight leading-tight line-clamp-1 pr-16">{college.name}</h2>
+                    </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-gray-600">Minimum Rating</label>
-            <div className="flex gap-2">
-              {['4.0', '4.5', '4.8'].map((rating) => (
-                <button
-                  key={rating}
-                  type="button"
-                  onClick={() => setMinRating(minRating === rating ? '' : rating)}
-                  className={`flex-1 py-1.5 px-2 border rounded-lg text-xs font-medium transition-all ${
-                    minRating === rating
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                      : 'bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100'
-                  }`}
-                >
-                  {rating}★+
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {(searchTerm || maxFees || minRating) && (
-            <button
-              onClick={() => { setSearchTerm(''); setMaxFees(''); setMinRating(''); }}
-              className="w-full text-center text-xs text-red-600 hover:text-red-700 font-medium py-1 hover:underline transition-all"
-            >
-              Clear All Active Filters
-            </button>
-          )}
-        </section>
-
-        {/* Results Panel */}
-        <section className="lg:col-span-3 space-y-6">
-          <div className="flex justify-between items-center bg-white px-5 py-3 rounded-lg border border-gray-200 shadow-sm">
-            <span className="text-sm font-medium text-gray-600">
-              {loading ? 'Analyzing data...' : `Discovered ${colleges.length} Elite Institutions`}
-            </span>
-            <div className="text-xs text-gray-400">Sorted by Rating (Desc)</div>
-          </div>
-
-          {error && (
-            <div className="bg-red-50 text-red-800 p-4 rounded-xl border border-red-200 text-sm">
-              🚨 <strong>API Sync Error:</strong> {error}
-            </div>
-          )}
-
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[1, 2].map((i) => (
-                <div key={i} className="animate-pulse bg-white border border-gray-200 rounded-xl h-64 shadow-sm"></div>
-              ))}
-            </div>
-          ) : colleges.length === 0 ? (
-            <div className="bg-white rounded-xl border border-gray-200 p-12 text-center shadow-sm max-w-md mx-auto">
-              <span className="text-4xl">🔍</span>
-              <h3 className="mt-4 font-semibold text-lg text-gray-800">No Matching Colleges Found</h3>
-              <p className="text-sm text-gray-500 mt-1">Adjust your search parameters to broaden the search.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {colleges.map((college) => (
-                <article 
-                  key={college.id} 
-                  className="bg-white border border-gray-200 hover:border-blue-400 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 flex flex-col overflow-hidden"
-                >
-                  <div className="p-5 border-b border-gray-100 bg-gradient-to-b from-gray-50/50 to-white flex-1">
-                    <div className="flex justify-between items-start gap-2 mb-2">
+                    <div className="flex justify-between items-start gap-2 pt-2 border-t border-gray-50">
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
                         ⭐ {college.rating ? Number(college.rating).toFixed(1) : 'N/A'}
                       </span>
-                      <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded">
-                        Avg Pack: {formatINR(college.placements.average)}
-                      </span>
+                      <div className="text-right">
+                        <span className="text-xs font-semibold text-emerald-600 block">{formatINR(college.placements?.average || 0)}</span>
+                        <span className="text-[9px] uppercase tracking-wide text-gray-400 font-medium block">Avg Compensation</span>
+                      </div>
                     </div>
-                    <h3 className="font-bold text-lg text-gray-900 tracking-tight leading-snug">
-                      {college.name}
-                    </h3>
-                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                      📍 {college.location}
-                    </p>
-                    <p className="text-sm text-gray-600 line-clamp-2 mt-3 leading-relaxed">
-                      {college.overview}
-                    </p>
                   </div>
 
-                  <div className="bg-gray-50 px-5 py-4 border-t border-gray-100 flex items-center justify-between gap-4">
-                    <div>
-                      <div className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Annual Tuition</div>
-                      <div className="text-base font-bold text-gray-900">{formatINR(college.fees)}</div>
-                    </div>
-                    <button 
-                      type="button"
-                      onClick={() => alert(`Navigating to profile details for ${college.name}...`)}
-                      className="bg-blue-600 text-white hover:bg-blue-700 font-medium px-4 py-2 rounded-lg text-xs transition-all shadow-sm"
-                    >
+                  <div className="bg-gray-50 border-t border-gray-100 px-5 py-3 flex justify-between items-center">
+                    <span className="text-xs font-bold text-gray-700">{formatINR(college.fees)}<span className="text-[10px] text-gray-400 font-normal">/yr</span></span>
+                    <Link href={`/colleges/${college.id}`} className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-all">
                       View Details →
-                    </button>
+                    </Link>
                   </div>
-                </article>
-              ))}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* Floating Bottom Action Dock */}
+      {selectedForCompare.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-slate-900 text-white py-4 px-6 shadow-2xl border-t border-slate-800 z-40 animate-slide-up">
+          <div className="max-w-4xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="text-sm font-medium text-slate-300">
+              Selected <span className="text-white font-bold font-mono bg-slate-800 px-2 py-1 rounded mx-1">{selectedForCompare.length}</span> / 3 institutions for comparative analysis.
             </div>
-          )}
-        </section>
-      </div>
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => setSelectedForCompare([])}
+                className="text-xs font-semibold text-slate-400 hover:text-white transition-all"
+              >
+                Clear All
+              </button>
+              <button
+                disabled={selectedForCompare.length < 2}
+                onClick={fetchComparisonMatrix}
+                className={`text-xs font-bold px-5 py-2.5 rounded-lg shadow-md transition-all ${selectedForCompare.length >= 2 ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}
+              >
+                {selectedForCompare.length < 2 ? 'Select at least 2 to Compare' : 'Generate Comparison Matrix 📊'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Comparison Modal Overlay */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-100 flex flex-col">
+            
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h2 className="text-lg font-black text-gray-900">Side-by-Side Comparative Matrix</h2>
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="bg-white text-gray-400 hover:text-gray-600 p-1.5 rounded-lg border border-gray-200 transition-all text-xs font-bold"
+              >
+                ✕ Close Matrix
+              </button>
+            </div>
+
+            <div className="p-6 flex-1 overflow-x-auto">
+              {compareLoading ? (
+                <div className="text-center py-12 text-sm text-gray-400 font-medium animate-pulse">Running analytical comparisons cross-checks...</div>
+              ) : (
+                <table className="w-full text-left border-collapse min-w-[600px]">
+                  <thead>
+                    <tr className="border-b-2 border-gray-200">
+                      <th className="py-3 px-4 text-xs font-bold tracking-wider text-gray-400 uppercase w-1/4">Key Metrics</th>
+                      {compareData.map(col => (
+                        <th key={col.id} className="py-3 px-4 font-extrabold text-sm text-gray-900 w-1/4">{col.name}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 text-sm">
+                    <tr>
+                      <td className="py-3.5 px-4 font-bold text-gray-400 text-xs uppercase tracking-wider bg-gray-50/30">Location</td>
+                      {compareData.map(col => (
+                        <td key={col.id} className="py-3.5 px-4 text-gray-600 font-medium">📍 {col.location}</td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="py-3.5 px-4 font-bold text-gray-400 text-xs uppercase tracking-wider bg-gray-50/30">Evaluation Score</td>
+                      {compareData.map(col => (
+                        <td key={col.id} className="py-3.5 px-4 font-black text-amber-600">⭐ {col.rating ? Number(col.rating).toFixed(1) : 'N/A'}</td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="py-3.5 px-4 font-bold text-gray-400 text-xs uppercase tracking-wider bg-gray-50/30">Tuition Fees (Annual)</td>
+                      {compareData.map(col => (
+                        <td key={col.id} className="py-3.5 px-4 font-bold text-gray-900">{formatINR(col.fees)}</td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="py-3.5 px-4 font-bold text-gray-400 text-xs uppercase tracking-wider bg-gray-50/30">Average Package</td>
+                      {compareData.map(col => (
+                        <td key={col.id} className="py-3.5 px-4 font-bold text-emerald-600">{formatINR(col.placements?.average || 0)}</td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="py-3.5 px-4 font-bold text-gray-400 text-xs uppercase tracking-wider bg-gray-50/30">Highest Package</td>
+                      {compareData.map(col => (
+                        <td key={col.id} className="py-3.5 px-4 font-extrabold text-blue-600">{formatINR(col.placements?.highest || 0)}</td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="py-3.5 px-4 font-bold text-gray-400 text-xs uppercase tracking-wider bg-gray-50/30">Core Recruiters</td>
+                      {compareData.map(col => (
+                        <td key={col.id} className="py-3.5 px-4">
+                          <div className="flex flex-wrap gap-1">
+                            {col.placements?.topRecruiters?.slice(0, 3).map((r, i) => (
+                              <span key={i} className="bg-gray-100 text-gray-700 text-[10px] font-semibold px-2 py-0.5 rounded">
+                                {r}
+                              </span>
+                            )) || 'N/A'}
+                          </div>
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
     </main>
   );
 }
