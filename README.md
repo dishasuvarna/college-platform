@@ -2,6 +2,7 @@
 
 A robust, high-performance platform engineered to streamline institutional data discovery and objective academic comparison. This project serves as a comprehensive Discovery Engine, prioritizing data accuracy, efficient filtering, and a seamless side-by-side comparison experience for students.
 
+
 🛠 Technical Stack
 
 Core Framework: Next.js 15 (App Router)
@@ -14,7 +15,9 @@ Database: PostgreSQL
 
 Styling: Tailwind CSS
 
+
 🔑 Key Features
+
 Advanced Discovery Engine: A high-speed search and filtering system that allows users to navigate institutional data by location, fees, and examination criteria with precision.
 
 Intelligent Comparison Matrix: A professional-grade tool enabling users to evaluate institutions side-by-side. It visualizes critical performance indicators—including tuition fees, cutoff ranks, and placement statistics—to facilitate data-driven decision-making.
@@ -23,7 +26,9 @@ Robust Data Architecture: Engineered with a decoupled backend approach. By separ
 
 Performance-First Design: Utilizing prisma as a singleton instance, the application minimizes database connection overhead, ensuring sub-second response times for complex queries.
 
+
 🏗 Architectural Philosophy
+
 The College Discovery Platform was built with a "Foundations First" mindset. Development focused on:
 
 System Reliability: Ensuring the core engine remains bug-free and performant under load.
@@ -32,7 +37,9 @@ Separation of Concerns: Business logic is isolated from frontend components to a
 
 Scalable Data Model: The platform uses a seed-driven data model, architected to easily transition into an Administrative CMS (Content Management System) for real-time data updates by institutional partners.
 
+
 🛣 Future Roadmap
+
 As the platform evolves, the following phases are planned:
 
 Administrative CMS: Implementation of a secure backend portal for institutions to manage their own performance metrics and admission data.
@@ -43,7 +50,9 @@ AI-Orchestrated Insights: Implementation of an AI service layer to provide dynam
 
 Real-time Collaboration: Integrating WebSockets to facilitate live updates and instant communication channels.
 
+
 📝 Setup Instructions
+
 Clone the repository: git clone https://github.com/dishasuvarna/college-platform
 
 Install dependencies: npm install
@@ -56,5 +65,6 @@ Bash
 npx prisma generate
 npx prisma db push
 Start Development: npm run dev
+
 
 Built as a high-performance solution for academic institutional discovery.
