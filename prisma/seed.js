@@ -1,89 +1,69 @@
-// prisma/seed.js
+// 🔑 Change this line to point directly to where your schema output puts it!
+const { PrismaClient } = require('../node_modules/@prisma/client'); 
+const { PrismaPg } = require('@prisma/adapter-pg');
 const { Pool } = require('pg');
 require('dotenv').config();
 
-// Connect directly to your Neon PostgreSQL instance using your environment string
-const pool = new Pool({ 
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false } // Ensures smooth cloud SSL handshake
-});
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
+
+// ... rest of your seed file remains exactly the same!
 
 async function main() {
-  console.log('🔗 Connecting directly to Neon cloud database...');
+  console.log('🌱 Starting database seeding...');
 
-  // 1. Find out exactly what your table is actually named in Postgres
-  const tableCheck = await pool.query(`
-    SELECT table_name 
-    FROM information_schema.tables 
-    WHERE table_schema = 'public';
-  `);
-  
-  const existingTables = tableCheck.rows.map(row => row.table_name);
-  console.log('🔍 Discovered active database tables:', existingTables);
+  // 1. Clear out old database structures to stay clean
+  await prisma.college.deleteMany({});
 
-  // 2. Identify if the table is named "College", "college", or "colleges"
-  let targetTable = existingTables.find(t => t.toLowerCase() === 'college');
-  
-  if (!targetTable) {
-    // If npx prisma db push hasn't actually created the table yet, let's build it right now!
-    console.log('⚠️ College table not found in database. Building it automatically...');
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS "College" (
-        id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL,
-        location TEXT NOT NULL,
-        fees INT NOT NULL,
-        rating NUMERIC(3,2) NOT NULL,
-        overview TEXT NOT NULL,
-        courses TEXT[] NOT NULL,
-        placements JSONB NOT NULL
-      );
-    `);
-    targetTable = 'College';
-  }
+  // 2. Insert the complete MVP dataset profiles
+  await prisma.college.createMany({
+    data: [
+      {
+        name: "Indian Institute of Technology (IIT) Bombay",
+        location: "Mumbai, Maharashtra",
+        fees: 220000,
+        rating: 4.9,
+        overview: "A premier engineering institution known globally for academic excellence, cutting-edge research infrastructure, and vibrant campus life.",
+        courses: "B.Tech Computer Science, B.Tech Electrical Engineering, M.Tech Data Science",
+        placements: "Average Package: ₹21.8 LPA | Highest Package: ₹1.3 Crore LPA. Top recruiters include Google, Microsoft, and Qualcomm.",
+        examRequired: "JEE",
+        cutoffRank: 100,
+      },
+      {
+        name: "BITS Pilani",
+        location: "Pilani, Rajasthan",
+        fees: 550000,
+        rating: 4.7,
+        overview: "A top-tier private deemed university renowned for its 'No Reservation' policy, flexible academic structure, and strong global alumni network.",
+        courses: "B.E. Computer Science, B.E. Electronics & Communication, M.Sc. Economics",
+        placements: "Average Package: ₹15.6 LPA | Highest Package: ₹60 LPA. Key partners include Apple, Uber, and Goldman Sachs.",
+        examRequired: "BITSAT",
+        cutoffRank: 320,
+      },
+      {
+        name: "Vellore Institute of Technology (VIT)",
+        location: "Vellore, Tamil Nadu",
+        fees: 198000,
+        rating: 4.2,
+        overview: "A massive, state-of-the-art private institution known for high international exposure, structured credit options, and massive volume placements.",
+        courses: "B.Tech Information Technology, B.Tech Bio-Medical, MCA",
+        placements: "Average Package: ₹8.2 LPA | Highest Package: ₹44 LPA. Amazon, TCS, and Cognizant recruit heavily here.",
+        examRequired: "VITEEE",
+        cutoffRank: 8000,
+      },
+    ],
+  });
 
-  console.log(`🧼 Cleaning up old records in table: "${targetTable}"...`);
-  await pool.query(`DELETE FROM "${targetTable}";`);
-
-  // 3. Define our rich educational dataset
-  const collegesToSeed = [
-    {
-      name: "Indian Institute of Technology (IIT)",
-      location: "Mumbai, Maharashtra",
-      fees: 220000,
-      rating: 4.9,
-      overview: "A premier public technical and research university known for its rigorous academic programs.",
-      courses: ["Computer Science Engineering", "Electrical Engineering", "Data Science & AI"],
-      placements: JSON.stringify({ highest: 4800000, average: 1600000, topRecruiters: ["Google", "Microsoft"] })
-    },
-    {
-      name: "National Institute of Technology (NIT)",
-      location: "Surathkal, Karnataka",
-      fees: 150000,
-      rating: 4.5,
-      overview: "One of India's top tier-1 engineering institutions with excellent placements.",
-      courses: ["Information Technology", "Computer Science Engineering"],
-      placements: JSON.stringify({ highest: 3600000, average: 1250000, topRecruiters: ["Amazon", "Uber"] })
-    }
-  ];
-
-  // 4. Inject records directly via atomic SQL inserts
-  console.log('🌱 Pushing fresh college profiles into Neon...');
-  for (const college of collegesToSeed) {
-    await pool.query(
-      `INSERT INTO "${targetTable}" (name, location, fees, rating, overview, courses, placements) VALUES ($1, $2, $3, $4, $5, $6, $7);`,
-      [college.name, college.location, college.fees, college.rating, college.overview, college.courses, college.placements]
-    );
-  }
-
-  console.log('✅ Success! Database seeded natively with direct SQL connections.');
+  console.log('✅ Database successfully seeded with full Track B MVP data!');
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Direct seeding failed:', e.message);
+    console.error('❌ Error during seeding:', e);
     process.exit(1);
   })
-  .finally(() => {
-    pool.end();
+  .finally(async () => {
+    await prisma.$disconnect();
+    await pool.end(); // Clean up the connection pool
   });

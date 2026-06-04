@@ -1,163 +1,128 @@
-'use client';
+"use client";
 
-import { useState, useEffect, use } from 'react';
-import Link from 'next/link';
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 
-interface College {
+interface CollegeData {
   id: number;
   name: string;
   location: string;
   fees: number;
-  rating: any; // Safely handles incoming string digits or numbers from PostgreSQL
-  overview: string;
-  courses: string[];
-  placements: {
-    highest: number;
-    average: number;
-    topRecruiters: string[];
-  };
+  rating: number;
+  overview?: string;
+  courses?: string;
+  placements?: string;
+  examRequired?: string;
+  cutoffRank?: number;
+  averagePackageDisplay?: string;
+  highestPackageDisplay?: string;
+  coreRecruitersDisplay?: string;
 }
 
-export default function CollegeDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  // Unwrap asynchronous route params safely according to modern Next.js specifications
-  const resolvedParams = use(params);
+export default function CollegeDetailPage() {
+  const params = useParams();
+  const router = useRouter();
   
-  const [college, setCollege] = useState<College | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  // Cleanly pull and ensure the dynamic param is bound
+  const id = typeof params?.id === "string" ? params.id : "";
+
+  const [college, setCollege] = useState<CollegeData | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchProfile = async () => {
+    async function fetchDetails() {
+      // 🔑 Guard Gate: If Next.js hasn't populated the ID into the client router yet, halt execution
+      if (!id) return;
+
+      setLoading(true);
       try {
-        const response = await fetch(`/api/colleges/${resolvedParams.id}`);
-        if (!response.ok) throw new Error('Requested college asset could not be located.');
-        const data = await response.json();
+        const res = await fetch(`/api/colleges/${id}`);
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || "Failed to load college details.");
+        }
+        const data = await res.json();
         setCollege(data);
       } catch (err: any) {
+        console.error("Profile detail fetch failure:", err);
         setError(err.message);
       } finally {
         setLoading(false);
       }
-    };
-    fetchProfile();
-  }, [resolvedParams.id]);
+    }
 
-  const formatINR = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
+    fetchDetails();
+  }, [id]); // Hook tracking triggers cleanly as soon as 'id' updates from the router frame
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-sm font-medium text-gray-500 animate-pulse">Syncing complete institution portfolio files...</div>
-      </div>
-    );
-  }
-
-  if (error || !college) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-6">
-        <div className="bg-white p-8 rounded-xl border border-gray-200 shadow-sm max-w-md text-center">
-          <span className="text-3xl">⚠️</span>
-          <h2 className="text-lg font-bold text-gray-800 mt-4">Profile Unavailable</h2>
-          <p className="text-sm text-gray-500 mt-2">{error || "The profile matching this asset identifier could not be verified."}</p>
-          <Link href="/" className="inline-block mt-5 text-xs bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition-all shadow-sm">
-            ← Return to Discovery Hub
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  if (!id) return <div className="p-8 text-center text-gray-500">Initializing router parameters...</div>;
+  if (loading) return <div className="p-8 text-center text-gray-600">Loading profile details...</div>;
+  if (error || !college) return <div className="p-8 text-center text-red-500">Error: {error || "College profile not found."}</div>;
 
   return (
-    <main className="min-h-screen bg-gray-50 text-gray-900 pb-12">
-      {/* Dynamic Header Controls */}
-      <div className="bg-white border-b border-gray-200 py-4 px-6 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-5xl mx-auto flex justify-between items-center">
-          <Link href="/" className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-all">
-            ← Back to Discovery Grid
-          </Link>
-          <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500 font-mono">ID Reference: #{college.id}</span>
-        </div>
-      </div>
+    <div className="max-w-4xl mx-auto p-6 space-y-6">
+      {/* Back Navigation Button */}
+      <button 
+        onClick={() => router.back()} 
+        className="text-blue-600 hover:underline flex items-center gap-2 mb-4 font-medium"
+      >
+        ← Back to Search
+      </button>
 
-      {/* Hero Branding Section */}
-      <header className="bg-gradient-to-r from-slate-900 to-indigo-950 text-white py-12 px-6 shadow-md border-b border-slate-800">
-        <div className="max-w-5xl mx-auto space-y-4">
-          <div className="flex flex-wrap gap-2 items-center">
-            <span className="bg-amber-400 text-slate-950 text-xs font-bold px-2 py-0.5 rounded shadow-sm">
-              ★ {college.rating ? Number(college.rating).toFixed(1) : 'N/A'} Rating
-            </span>
-            <span className="bg-slate-800/80 text-slate-300 text-xs px-2 py-0.5 rounded border border-slate-700">📍 {college.location}</span>
-          </div>
-          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight max-w-3xl leading-tight text-white">{college.name}</h1>
-        </div>
-      </header>
-
-      {/* Main Analytics Display Grid */}
-      <div className="max-w-5xl mx-auto px-4 mt-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+      {/* Main Header Information Card */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+        <h1 className="text-3xl font-bold text-gray-900">{college.name}</h1>
+        <p className="text-gray-500 mt-1">{college.location}</p>
         
-        {/* Left Side: Performance Metrics Columns */}
-        <section className="space-y-6">
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">Financial Metrics</h3>
-            <div>
-              <div className="text-2xl font-black text-gray-900">{formatINR(college.fees)}</div>
-              <div className="text-xs text-gray-500 mt-0.5">Estimated Annual General Tuition Fee</div>
-            </div>
+        <div className="flex gap-6 mt-4 pt-4 border-t border-gray-100">
+          <div>
+            <span className="text-sm text-gray-500 block">Annual Fees</span>
+            <span className="text-lg font-semibold text-gray-800">₹{college.fees?.toLocaleString()}</span>
           </div>
-
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">Placement Benchmarks</h3>
-            <div className="border-b border-gray-100 pb-3">
-              <div className="text-xl font-bold text-emerald-600">{formatINR(college.placements?.highest || 0)}</div>
-              <div className="text-[10px] text-gray-400 uppercase font-medium tracking-wide">Highest Package Secured</div>
-            </div>
-            <div>
-              <div className="text-xl font-bold text-gray-900">{formatINR(college.placements?.average || 0)}</div>
-              <div className="text-[10px] text-gray-400 uppercase font-medium tracking-wide">Average Compensation Metric</div>
-            </div>
+          <div>
+            <span className="text-sm text-gray-500 block">Rating</span>
+            <span className="text-lg font-semibold text-amber-500">⭐ {college.rating} / 5</span>
           </div>
-        </section>
-
-        {/* Right Side: Deep-Dive Profiles */}
-        <section className="md:col-span-2 space-y-6">
-          <article className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-3">
-            <h2 className="text-lg font-bold text-gray-800">Institutional Overview</h2>
-            <hr className="border-gray-100" />
-            <p className="text-sm text-gray-600 leading-relaxed font-normal">{college.overview}</p>
-          </article>
-
-          <article className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
-            <h2 className="text-lg font-bold text-gray-800">Available Courses & Majors</h2>
-            <hr className="border-gray-100" />
-            <div className="flex flex-wrap gap-2">
-              {college.courses?.map((course, index) => (
-                <span key={index} className="bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-lg border border-blue-100 shadow-sm">
-                  📚 {course}
-                </span>
-              )) || <span className="text-xs text-gray-400">No courses listed currently.</span>}
+          {college.examRequired && (
+            <div>
+              <span className="text-sm text-gray-500 block">Admission Exam</span>
+              <span className="text-lg font-semibold text-purple-600">{college.examRequired}</span>
             </div>
-          </article>
-
-          <article className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-3">
-            <h2 className="text-lg font-bold text-gray-800">Top Strategic Recruiters</h2>
-            <hr className="border-gray-100" />
-            <div className="grid grid-cols-2 gap-3">
-              {college.placements?.topRecruiters?.map((recruiter, index) => (
-                <div key={index} className="bg-gray-50 border border-gray-200 px-4 py-2.5 rounded-lg text-xs font-bold text-gray-700 text-center">
-                  💼 {recruiter}
-                </div>
-              )) || <div className="text-xs text-gray-400 col-span-2 text-center">Data processing in progress.</div>}
-            </div>
-          </article>
-        </section>
-
+          )}
+        </div>
       </div>
-    </main>
+
+      {/* Extended Profile Overview Section */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+        <h2 className="text-xl font-bold text-gray-900 mb-2">About the Institution</h2>
+        <p className="text-gray-700 leading-relaxed">{college.overview || "Detailed description pending update."}</p>
+      </div>
+
+      {/* Grid for Programs & Placement Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+          <h3 className="text-lg font-bold text-gray-900 mb-2">Offered Programs</h3>
+          <p className="text-gray-700 whitespace-pre-line">{college.courses || "Information pending update."}</p>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+          <h3 className="text-lg font-bold text-gray-900 mb-2">Placement Highlights</h3>
+          <div className="space-y-3 mt-2">
+            <div>
+              <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider block">Average Package</span>
+              <span className="text-sm font-bold text-emerald-600">{college.averagePackageDisplay || "N/A"}</span>
+            </div>
+            <div>
+              <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider block">Highest Package</span>
+              <span className="text-sm font-bold text-blue-600">{college.highestPackageDisplay || "N/A"}</span>
+            </div>
+            <div>
+              <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider block">Core Recruiters</span>
+              <p className="text-sm text-gray-600 font-medium whitespace-pre-line">{college.coreRecruitersDisplay || "N/A"}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

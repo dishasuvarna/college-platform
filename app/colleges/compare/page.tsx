@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 interface College {
-  id: number;
+  id: string; // 🔑 Changed to string to perfectly match your UUID database schema
   name: string;
   location: string;
   fees: number;
@@ -12,7 +12,6 @@ interface College {
   overview?: string;
   courses?: string;
   placements?: string;
-  // 🔑 Parsed placement properties mapping from your backend regex engine
   averagePackageDisplay?: string;
   highestPackageDisplay?: string;
   coreRecruitersDisplay?: string;
@@ -24,8 +23,8 @@ export default function CollegeDiscoveryPlatform() {
   const [search, setSearch] = useState<string>('');
   const [maxFees, setMaxFees] = useState<number>(600000);
   
-  // Feature 3: Selected comparison tracking state
-  const [selectedForCompare, setSelectedForCompare] = useState<number[]>([]);
+  // Feature 3: Selected comparison tracking state using string UUIDs
+  const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
   const [compareData, setCompareData] = useState<College[]>([]);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [compareLoading, setCompareLoading] = useState<boolean>(false);
@@ -48,7 +47,7 @@ export default function CollegeDiscoveryPlatform() {
     fetchColleges();
   }, [search, maxFees]);
 
-  const handleSelectCompare = (id: number) => {
+  const handleSelectCompare = (id: string) => {
     setSelectedForCompare(prev => {
       if (prev.includes(id)) {
         return prev.filter(item => item !== id);
@@ -66,7 +65,7 @@ export default function CollegeDiscoveryPlatform() {
     setCompareLoading(true);
     setIsModalOpen(true);
     try {
-      // 🔑 Updated path to match your clean /api/compare structure perfectly
+      // Sends clean string array values directly down to your /api/compare route
       const res = await fetch(`/api/compare?ids=${selectedForCompare.join(',')}`);
       if (res.ok) {
         const data = await res.json();
@@ -161,9 +160,8 @@ export default function CollegeDiscoveryPlatform() {
                         ⭐ {college.rating ? Number(college.rating).toFixed(1) : 'N/A'}
                       </span>
                       <div className="text-right">
-                        {/* 🔑 Fallback gracefully to custom string properties if object metrics don't exist */}
                         <span className="text-xs font-bold text-emerald-600 block">
-                          {college.averagePackageDisplay || "See Details"}
+                          {college.placements ? college.placements.split('|')[0].replace('Average Package:', '').trim() : "See Details"}
                         </span>
                         <span className="text-[9px] uppercase tracking-wide text-gray-400 font-medium block">Avg Compensation</span>
                       </div>
@@ -172,7 +170,7 @@ export default function CollegeDiscoveryPlatform() {
 
                   <div className="bg-gray-50 border-t border-gray-100 px-5 py-3 flex justify-between items-center">
                     <span className="text-xs font-bold text-gray-700">{formatINR(college.fees)}<span className="text-[10px] text-gray-400 font-normal">/yr</span></span>
-                    {/* 🔑 Hard-mapped strictly to database integer primary keys */}
+                    {/* 🔑 Safe routing via UUID strings */}
                     <Link href={`/colleges/${college.id}`} className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-all">
                       View Details →
                     </Link>

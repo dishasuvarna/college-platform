@@ -1,14 +1,14 @@
-// prisma.config.ts
 import "dotenv/config";
 import { defineConfig, env } from "prisma/config";
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
-  migrations: {
+ migrations: {
     path: "prisma/migrations",
-    seed: "node prisma/seed.js", // Updated to node and .js
+    seed: "node prisma/seed.js", // Changed from tsx to node since it's a JavaScript file!
   },
   datasource: {
-    url: env("DATABASE_URL"),
+    //  This is where Prisma 7 reads your database string for migrations!
+    url: env("DATABASE_URL"), 
   },
 });
