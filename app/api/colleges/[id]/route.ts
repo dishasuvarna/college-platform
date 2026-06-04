@@ -46,11 +46,10 @@ export async function GET(
     const placementText = college.placements || "";
 
     // Parse the textual placements smoothly
-    const avgMatch = placementText.match(/Average Package:\s*(.*?)(?=\s*\||\s*$)/i);
-    const highMatch = placementText.match(/Highest Package:\s*(.*?)(?=\s*\.|\s*$)/i);
-    const recruiterMatch = placementText.match(/recruiters include\s*(.*)/i) || 
-                           placementText.match(/partners include\s*(.*)/i) || 
-                           placementText.match(/Recruiters:\s*(.*)/i);
+    const avgMatch = placementText.match(/Average Package:\s*([₹\d\.]+\s*(?:LPA|Crore|K)?)/i);
+    const highMatch = placementText.match(/Highest Package:\s*([₹\d\.]+\s*(?:LPA|Crore|K)?)/i);
+    const recruiterMatch = placementText.match(/(?:include|recruiters|partners)\s+([^.]+)/i) || 
+                             placementText.match(/([A-Z][a-zA-Z\s]+(?:,\s*[A-Z][a-zA-Z\s]+)*\s+recruit(?:s|ed| heavily)?)/i);
 
     const enrichData = {
       ...college,
