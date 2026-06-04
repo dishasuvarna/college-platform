@@ -9,31 +9,28 @@ const pool = new Pool({
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const idsString = searchParams.get('ids');
+    const search = searchParams.get('search') || '';
+    const maxFees = parseInt(searchParams.get('maxFees') || '600000', 10);
+    const sortBy = searchParams.get('sortBy') || 'name'; // Default sort fallback
 
-    if (!idsString) {
-      return NextResponse.json({ error: "Missing ids query parameter." }, { status: 400 });
-    }
+    // Map frontend dropdown keys to strict, safe SQL column clauses
+    let orderClause = 'name ASC';
+    if (sortBy === 'fees_low') orderClause = 'fees ASC';
+    if (sortBy === 'rating_high') orderClause = 'rating DESC';
+    if (sortBy === 'placement_high') orderClause = '(placements->>\'average\')::int DESC';
 
-    // Convert comma-separated string "1,2,3" into an array of integers [1, 2, 3]
-    const collegeIds = idsString.split(',').map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+    // Constructing query safely using parameterized values for security
+    const query = `
+      SELECT * FROM "College" 
+      WHERE (name ILIKE $1 OR overview ILIKE $1) 
+      AND fees <= $2
+      ORDER BY ${orderClause};
+    `;
 
-    if (collegeIds.length === 0) {
-      return NextResponse.json({ error: "No valid institution identifiers provided." }, { status: 400 });
-    }
-
-    // Query Postgres using the ANY operator for optimal batch fetching
-    const result = await pool.query(
-      'SELECT * FROM "College" WHERE id = ANY($1::int[]);',
-      [collegeIds]
-    );
-
+    const result = await pool.query(query, [`%${search}%`, maxFees]);
     return NextResponse.json(result.rows, { status: 200 });
   } catch (error: any) {
-    console.error("Batch query exception:", error);
-    return NextResponse.json(
-      { error: "Internal database query exception.", details: error.message },
-      { status: 500 }
-    );
+    console.error("Database query exception:", error);
+    return NextResponse.json({ error: "Internal server error." }, { status: 500 });
   }
 }

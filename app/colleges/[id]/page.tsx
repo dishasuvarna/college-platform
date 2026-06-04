@@ -8,7 +8,7 @@ interface College {
   name: string;
   location: string;
   fees: number;
-  rating: any; // Using any to safely parse string numbers from Postgres
+  rating: any; // Safely handles incoming string digits or numbers from PostgreSQL
   overview: string;
   courses: string[];
   placements: {
@@ -19,6 +19,7 @@ interface College {
 }
 
 export default function CollegeDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  // Unwrap asynchronous route params safely according to modern Next.js specifications
   const resolvedParams = use(params);
   
   const [college, setCollege] = useState<College | null>(null);
@@ -74,6 +75,7 @@ export default function CollegeDetailPage({ params }: { params: Promise<{ id: st
 
   return (
     <main className="min-h-screen bg-gray-50 text-gray-900 pb-12">
+      {/* Dynamic Header Controls */}
       <div className="bg-white border-b border-gray-200 py-4 px-6 sticky top-0 z-10 shadow-sm">
         <div className="max-w-5xl mx-auto flex justify-between items-center">
           <Link href="/" className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-all">
@@ -83,6 +85,7 @@ export default function CollegeDetailPage({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
+      {/* Hero Branding Section */}
       <header className="bg-gradient-to-r from-slate-900 to-indigo-950 text-white py-12 px-6 shadow-md border-b border-slate-800">
         <div className="max-w-5xl mx-auto space-y-4">
           <div className="flex flex-wrap gap-2 items-center">
@@ -95,7 +98,10 @@ export default function CollegeDetailPage({ params }: { params: Promise<{ id: st
         </div>
       </header>
 
+      {/* Main Analytics Display Grid */}
       <div className="max-w-5xl mx-auto px-4 mt-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+        
+        {/* Left Side: Performance Metrics Columns */}
         <section className="space-y-6">
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">Financial Metrics</h3>
@@ -108,16 +114,17 @@ export default function CollegeDetailPage({ params }: { params: Promise<{ id: st
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">Placement Benchmarks</h3>
             <div className="border-b border-gray-100 pb-3">
-              <div className="text-xl font-bold text-emerald-600">{formatINR(college.placements.highest)}</div>
+              <div className="text-xl font-bold text-emerald-600">{formatINR(college.placements?.highest || 0)}</div>
               <div className="text-[10px] text-gray-400 uppercase font-medium tracking-wide">Highest Package Secured</div>
             </div>
             <div>
-              <div className="text-xl font-bold text-gray-900">{formatINR(college.placements.average)}</div>
+              <div className="text-xl font-bold text-gray-900">{formatINR(college.placements?.average || 0)}</div>
               <div className="text-[10px] text-gray-400 uppercase font-medium tracking-wide">Average Compensation Metric</div>
             </div>
           </div>
         </section>
 
+        {/* Right Side: Deep-Dive Profiles */}
         <section className="md:col-span-2 space-y-6">
           <article className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-3">
             <h2 className="text-lg font-bold text-gray-800">Institutional Overview</h2>
@@ -129,11 +136,11 @@ export default function CollegeDetailPage({ params }: { params: Promise<{ id: st
             <h2 className="text-lg font-bold text-gray-800">Available Courses & Majors</h2>
             <hr className="border-gray-100" />
             <div className="flex flex-wrap gap-2">
-              {college.courses.map((course, index) => (
+              {college.courses?.map((course, index) => (
                 <span key={index} className="bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-lg border border-blue-100 shadow-sm">
                   📚 {course}
                 </span>
-              ))}
+              )) || <span className="text-xs text-gray-400">No courses listed currently.</span>}
             </div>
           </article>
 
@@ -141,14 +148,15 @@ export default function CollegeDetailPage({ params }: { params: Promise<{ id: st
             <h2 className="text-lg font-bold text-gray-800">Top Strategic Recruiters</h2>
             <hr className="border-gray-100" />
             <div className="grid grid-cols-2 gap-3">
-              {college.placements.topRecruiters.map((recruiter, index) => (
+              {college.placements?.topRecruiters?.map((recruiter, index) => (
                 <div key={index} className="bg-gray-50 border border-gray-200 px-4 py-2.5 rounded-lg text-xs font-bold text-gray-700 text-center">
                   💼 {recruiter}
                 </div>
-              ))}
+              )) || <div className="text-xs text-gray-400 col-span-2 text-center">Data processing in progress.</div>}
             </div>
           </article>
         </section>
+
       </div>
     </main>
   );
